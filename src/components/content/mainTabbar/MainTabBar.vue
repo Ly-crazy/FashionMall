@@ -1,5 +1,5 @@
 <template>
-  <tab-bar>
+  <tab-bar class="tab-bar">
     <tab-bar-item path="/home">
       <template #item-icon>
         <img src="~assets/img/tabbar/home.svg" alt="">
@@ -61,5 +61,7 @@
 </script>
 
 <style scoped>
-
+  .tab-bar {
+    z-index: 99;
+  }
 </style>
