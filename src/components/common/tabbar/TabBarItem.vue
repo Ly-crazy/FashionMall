@@ -22,11 +22,6 @@
         default: 'red'
       }
     },
-    data() {
-      return {
-        // isActive: true
-      }
-    },
     computed: {
       isActive() {
         return this.$route.path.indexOf(this.path) !== -1
@@ -46,7 +41,6 @@
 <style scoped>
   .tab-bar-item {
     flex: 1;
-    /* flex: 1 === flex-grow：1; flex-shrink：1; flex-basis：0% */
     text-align: center;
     height: 49px;
     font-size: 14px;
@@ -59,8 +53,4 @@
     margin-bottom: 2px;
     vertical-align: middle;
   }
-
-  /* .active {
-    color: red;
-  } */
 </style>

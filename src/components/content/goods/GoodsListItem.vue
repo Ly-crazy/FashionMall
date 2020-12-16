@@ -1,6 +1,6 @@
 <template>
-  <div class="goods-item">
-    <img :src="goodsItem.show.img" alt="">
+  <div class="goods-item" @click="itemClick">
+    <img v-lazy="showImage" alt="" @load="imageLoad">
     <div class="goods-info">
       <p>{{goodsItem.title}}</p>
       <span class="price">{{goodsItem.price}}</span>
@@ -18,6 +18,20 @@
         default() {
           return {}
         }
+      }
+    },
+    computed: {
+      showImage() {
+        return   this.goodsItem.image || this.goodsItem.show.img
+      }
+    },
+    methods: {
+      // 图片加载完成事件
+      imageLoad() {
+        this.$bus.$emit('itemImageLoad')
+      },
+      itemClick() {
+        this.$router.push('/detail/' + this.goodsItem.iid)
       }
     }
   }
@@ -47,9 +61,7 @@
 
   .goods-info p {
     overflow: hidden;
-    /* 文本溢出以省略号表示 */
     text-overflow: ellipsis;
-    /* 文本不会换行，文本会在在同一行上继续 */
     white-space: nowrap;
     margin-bottom: 3px;
   }
@@ -70,7 +82,6 @@
     top: -1px;
     width: 14px;
     height: 14px;
-    /* 0：第一个数字0表示背景颜色；0/14px：0 是background-position的属性简写、14px 是background-size的属性简写 */
     background: url("~assets/img/common/collect.svg") 0 0/14px 14px;
   }
 </style>

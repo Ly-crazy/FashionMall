@@ -5,11 +5,14 @@
         <div>购物街</div>
       </template>
     </nav-bar>
-    <scroll class="content" ref="scroll" :probe-type="3" @scroll="contentScroll" :pull-up-load="true" @pullingUp="loadMore">
-      <home-swiper :banners="banners" />
+    <tab-control :titles="['流行', '新款', '精选']" @tabClick="tabClick" ref="tabControl1" class="tab-control"
+      v-show="isTabFixed" />
+    <scroll class="content" ref="scroll" :probe-type="3" @scroll="contentScroll" :pull-up-load="true"
+      @pullingUp="loadMore">
+      <home-swiper :banners="banners" @swiperImageLoad="swiperImageLoad" />
       <recommend-view :recommends="recommends" />
       <feature-view />
-      <tab-control class="tab-control" :titles="['流行', '新款', '精选']" @tabClick="tabClick" />
+      <tab-control :titles="['流行', '新款', '精选']" @tabClick="tabClick" ref="tabControl2" />
       <goods-list :goods="showGoods" />
     </scroll>
     <back-top @click.native="backClick" v-show="isShowBackTop" />
@@ -25,9 +28,9 @@
   import TabControl from 'components/content/tabControl/TabControl'
   import GoodsList from 'components/content/goods/GoodsList'
   import Scroll from 'components/common/scroll/Scroll'
-  import BackTop from 'components/content/backTop/BackTop'
 
-  import { getHomeMultidata, getHomeGoods } from "network/home"
+  import { getHomeMultidata, getHomeGoods } from 'network/home'
+  import { itemListenerMixin,backTopMixin } from 'common/mixin'
 
   export default {
     name: "Home",
@@ -38,9 +41,10 @@
       NavBar,
       TabControl,
       GoodsList,
-      Scroll,
-      BackTop
+      Scroll
     },
+    // 混入
+    mixins: [itemListenerMixin, backTopMixin],
     data() {
       return {
         banners: [],
@@ -51,7 +55,8 @@
           'sell': { page: 0, list: [] }
         },
         currentType: 'pop',
-        isShowBackTop: false
+        tabOffsetTop: 0,
+        isTabFixed: false,
       }
     },
     computed: {
@@ -59,14 +64,28 @@
         return this.goods[this.currentType].list
       }
     },
+    // 组件实例创建完成，属性已绑定，但 DOM 还未生成，`$el` 属性还不存在
     created() {
-      // 1.请求多个数据
+      // 请求多个数据
       this.getHomeMultidata()
 
-      // 2.请求商品数据
+      // 请求商品数据
       this.getHomeGoods('pop')
       this.getHomeGoods('new')
       this.getHomeGoods('sell')
+    },
+    activated() {
+      // activated 时，将位置设置为 deactivated 时，记录的 scroll 的 y 的距离
+      // this.$refs.scroll.refresh() 放 this.$refs.scroll.scrollTo(0, this.saveY, 0) 前面，如果放后面，还是会偶尔出现返回home，回到顶部的问题
+      this.$refs.scroll.refresh() 
+      this.$refs.scroll.scrollTo(0, this.saveY, 0)
+    },
+    deactivated() {
+      // deactivated 时，记录 scroll 的 y 的距离
+      this.saveY = this.$refs.scroll.getScrollY()
+
+      // 取消全局事件的监听
+      this.$bus.$off('itemImageLoad', this.itemImgListener)
     },
     methods: {
       /*
@@ -84,15 +103,25 @@
             this.currentType = 'sell'
             break
         }
+        this.$refs.tabControl1.currentIndex = index
+        this.$refs.tabControl2.currentIndex = index
       },
-      backClick() {
-        this.$refs.scroll.scrollTo(0, 0, 500)
-      },
+      // 监听滚动的位置
       contentScroll(position) {
+        // 判断 BackTop 是否显示
         this.isShowBackTop = (-position.y) > 1000
+        // 决定 TabControl 是否吸顶(position: fixed)
+        this.isTabFixed = (-position.y) > this.tabOffsetTop
       },
+      // 图片加载完成
       loadMore() {
         this.getHomeGoods(this.currentType)
+      },
+      // 轮播图加载完成
+      swiperImageLoad() {
+        // 获取 tabControl 的 offsetTop
+        // 所有的组件都有一个属性 $el：用于获取组件的元素
+        this.tabOffsetTop = this.$refs.tabControl2.$el.offsetTop
       },
 
       /*
@@ -107,11 +136,10 @@
       getHomeGoods(type) {
         const page = this.goods[type].page + 1
         getHomeGoods(type, page).then(res => {
-          console.log(res)
           // ... 将数组里面的元素一个个解析，在push进行
           this.goods[type].list.push(...res.data.list)
           this.goods[type].page += 1
-
+          // 完成上拉加载更多
           this.$refs.scroll.finishPullUp()
         })
       }
@@ -121,7 +149,6 @@
 
 <style scoped>
   #home {
-    padding-top: 44px;
     height: 100vh;
     position: relative;
   }
@@ -129,18 +156,6 @@
   .home-nav {
     background-color: var(--color-tint);
     color: #fff;
-
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    z-index: 9;
-  }
-
-  .tab-control {
-    position: sticky;
-    top: 44px;
-    z-index: 9;
   }
 
   .content {
@@ -148,13 +163,12 @@
     position: absolute;
     top: 44px;
     bottom: 49px;
-    font: 0;
+    left: 0;
     right: 0;
   }
 
-  /* .content {
-    height: calc(100% - 93px);
-    overflow: hidden;
-    margin-top: 44px;
-  } */
+  .tab-control {
+    position: relative;
+    z-index: 9;
+  }
 </style>
